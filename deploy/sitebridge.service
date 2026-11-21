@@ -1,0 +1,25 @@
+[Unit]
+Description=sitebridge edge bridge (Modbus TCP -> OPC UA, telemetry, active/standby)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/sitebridge -config /etc/sitebridge/sitebridge.yaml
+# sitebridge sends WATCHDOG=1 every WatchdogSec/2; if its main loop stalls,
+# systemd kills and restarts it, and the peer takes over in the meantime.
+WatchdogSec=10
+Restart=always
+RestartSec=2
+# Give the node time to stop polling and send its "leaving" heartbeat.
+TimeoutStopSec=15
+
+User=sitebridge
+StateDirectory=sitebridge
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

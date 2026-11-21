@@ -1,0 +1,58 @@
+# Node A of an active/standby pair. Node B (node-b.yaml) is identical apart
+# from node, ha, opcua, http and telemetry.db.
+node:
+  id: site1-a
+  priority: 100          # preferred node when both start together
+
+ha:
+  enabled: true
+  listen: 127.0.0.1:7701
+  peer: 127.0.0.1:7702
+  heartbeat_interval: 200ms
+  failover_timeout: 1s   # standby takes over after 5 missed heartbeats
+
+opcua:
+  host: 127.0.0.1
+  port: 4840
+  namespace: urn:sitebridge:site1
+
+http:
+  listen: 127.0.0.1:8081
+
+telemetry:
+  db: ./data/site1-a.db
+  url: http://127.0.0.1:9000/ingest
+  source: site1
+  sample_interval: 1s
+  flush_interval: 2s
+  batch_max_records: 200
+  max_backlog: 500000    # ~6 days at 1 sample/s
+  synchronous: FULL      # survive power loss, not just process crashes
+  backoff_min: 1s
+  backoff_max: 2m
+
+devices:
+  - name: bess1
+    address: tcp://127.0.0.1:5020
+    unit_id: 1
+    poll_interval: 500ms
+    timeout: 1s
+    max_gap: 4
+    tags:
+      - {name: soc,            kind: input,   address: 0,   type: uint16, scale: 0.1, unit: "%"}
+      - {name: active_power,   kind: input,   address: 1,   type: int16,  unit: kW}
+      - {name: dc_voltage,     kind: input,   address: 2,   type: uint16, scale: 0.1, unit: V}
+      - {name: cell_temp,      kind: input,   address: 3,   type: int16,  scale: 0.1, unit: degC}
+      - {name: energy_out,     kind: input,   address: 4,   type: uint32, unit: kWh}
+      - {name: power_setpoint, kind: holding, address: 100, type: int16,  unit: kW, writable: true}
+      - {name: heartbeat,      kind: holding, address: 101, type: uint16}
+
+  - name: meter1
+    address: tcp://127.0.0.1:5021
+    unit_id: 1
+    poll_interval: 1s
+    timeout: 1s
+    tags:
+      - {name: site_power, kind: input, address: 0, type: float32, unit: kW}
+      - {name: frequency,  kind: input, address: 2, type: float32, unit: Hz}
+      - {name: voltage,    kind: input, address: 4, type: float32, unit: V}
