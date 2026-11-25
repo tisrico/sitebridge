@@ -28,7 +28,7 @@ func TestDefaults(t *testing.T) {
 		t.Errorf("telemetry defaults: %+v", c.Telemetry)
 	}
 	d := c.Devices[0]
-	if d.UnitID != 1 || d.PollInterval != time.Second || d.WordOrder != HighWordFirst {
+	if d.UnitID != 1 || d.PollInterval != time.Second || d.WordOrder != HighWordFirst || d.ByteOrder != LittleEndian {
 		t.Errorf("device defaults: %+v", d)
 	}
 }
@@ -78,6 +78,7 @@ devices:
   - name: d
     address: tcp://h:1
     tags: [{name: p, address: 0, type: int16}]`,
+		"bad byte order":  strings.Replace(minimal, "address: tcp://127.0.0.1:5020", "address: tcp://127.0.0.1:5020\n    byte_order: middle", 1),
 		"missing node id": strings.Replace(minimal, "node: {id: a}", "", 1),
 	}
 	for name, y := range cases {
@@ -86,6 +87,19 @@ devices:
 				t.Fatal("expected validation error")
 			}
 		})
+	}
+}
+
+func TestByteOrderValues(t *testing.T) {
+	for _, order := range []string{BigEndian, LittleEndian} {
+		y := strings.Replace(minimal, "address: tcp://127.0.0.1:5020", "address: tcp://127.0.0.1:5020\n    byte_order: "+order, 1)
+		c, err := Parse([]byte(y))
+		if err != nil {
+			t.Fatalf("%s: %v", order, err)
+		}
+		if got := c.Devices[0].ByteOrder; got != order {
+			t.Errorf("got %q want %q", got, order)
+		}
 	}
 }
 

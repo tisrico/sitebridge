@@ -5,13 +5,14 @@ package modbusdev
 import (
 	"fmt"
 	"math"
+	"math/bits"
 
 	"github.com/tisrico/sitebridge/internal/config"
 )
 
 // Decode converts raw registers (already sliced to the tag's width) into a
 // scaled engineering value: value = raw*scale + offset.
-func Decode(regs []uint16, t config.Tag, wordOrder string) (float64, error) {
+func Decode(regs []uint16, t config.Tag, wordOrder string, byteOrder string) (float64, error) {
 	w, err := config.Width(t.Type)
 	if err != nil {
 		return 0, err
@@ -19,6 +20,7 @@ func Decode(regs []uint16, t config.Tag, wordOrder string) (float64, error) {
 	if len(regs) < int(w) {
 		return 0, fmt.Errorf("tag %s: need %d registers, got %d", t.Name, w, len(regs))
 	}
+	regs = applyByteOrder(regs[:w], byteOrder)
 	var raw float64
 	switch t.Type {
 	case "uint16":
@@ -45,7 +47,17 @@ func Decode(regs []uint16, t config.Tag, wordOrder string) (float64, error) {
 
 // Encode converts an engineering value into raw registers for writing,
 // rejecting values that do not fit the register type.
-func Encode(v float64, t config.Tag, wordOrder string) ([]uint16, error) {
+func Encode(v float64, t config.Tag, wordOrder string, byteOrder string) ([]uint16, error) {
+	regs, err := encodeWords(v, t, wordOrder)
+	if err != nil {
+		return nil, err
+	}
+	return applyByteOrder(regs, byteOrder), nil
+}
+
+// encodeWords converts a value into registers arranged in wordOrder, before
+// any byte swapping.
+func encodeWords(v float64, t config.Tag, wordOrder string) ([]uint16, error) {
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		return nil, fmt.Errorf("tag %s: value must be finite", t.Name)
 	}
@@ -77,6 +89,20 @@ func Encode(v float64, t config.Tag, wordOrder string) ([]uint16, error) {
 		a, b := split32(uint32(int32(r)), wordOrder)
 		return []uint16{a, b}, nil
 	}
+}
+
+// applyByteOrder swaps the two bytes of every register for little-endian
+// devices. The swap is its own inverse, so reads and writes both use it. It
+// never modifies regs, because tags may share registers within a read block.
+func applyByteOrder(regs []uint16, byteOrder string) []uint16 {
+	if byteOrder != config.LittleEndian {
+		return regs
+	}
+	out := make([]uint16, len(regs))
+	for i, r := range regs {
+		out[i] = bits.ReverseBytes16(r)
+	}
+	return out
 }
 
 func intRange(typ string) (float64, float64, error) {
