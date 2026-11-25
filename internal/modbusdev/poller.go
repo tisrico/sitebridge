@@ -211,7 +211,7 @@ func (p *Poller) pollOnce() error {
 			t := p.dev.Tags[ti]
 			off := t.Address - b.Start
 			w, _ := config.Width(t.Type)
-			v, err := Decode(regs[off:off+w], t, p.dev.WordOrder)
+			v, err := Decode(regs[off:off+w], t, p.dev.WordOrder, p.dev.ByteOrder)
 			key := config.Key(p.dev.Name, t.Name)
 			if err != nil {
 				old, _ := p.store.Get(key)
@@ -268,7 +268,7 @@ func (p *Poller) doWrite(w writeReq) error {
 		p.writeErrors.Add(1)
 		return ErrNotConnected
 	}
-	regs, err := Encode(w.value, t, p.dev.WordOrder)
+	regs, err := Encode(w.value, t, p.dev.WordOrder, p.dev.ByteOrder)
 	if err != nil {
 		p.writeErrors.Add(1)
 		return err

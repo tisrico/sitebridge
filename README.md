@@ -90,8 +90,30 @@ curl -s 127.0.0.1:8081/status
     late reply after a timeout would desynchronise Modbus/TCP transaction IDs,
     so reconnecting is the safe choice.
 - Values are decoded with per-tag type (`uint16`, `int16`, `uint32`, `int32`,
-  `float32`), word order, scale and offset. Encoding for writes range-checks
-  before anything is sent.
+  `float32`), word order, byte order, scale and offset. Encoding for writes
+  range-checks before anything is sent.
+- Register layout is set per device. `word_order` (`high_first`, the default,
+  or `low_first`) orders the two registers of a 32-bit value. `byte_order`
+  (`little`, the default, or `big`) orders the two bytes inside each register,
+  for 16-bit and 32-bit values, on both reads and writes. For a 32-bit value
+  with bytes `A B C D` (`A` most significant), the bytes on the wire are shown
+  below. Standard Modbus devices use big-endian registers, so set
+  `byte_order: big` for them.
+
+  | `word_order` | `byte_order` | On the wire |
+  |---|---|---|
+  | `high_first` | `big` | `AB CD` |
+  | `low_first` | `big` | `CD AB` |
+  | `high_first` | `little` | `BA DC` |
+  | `low_first` | `little` | `DC BA` |
+
+  ```yaml
+  devices:
+    - name: meter1
+      word_order: low_first
+      byte_order: big
+      # address, tags and other settings as usual
+  ```
 
 ### Northbound: a consistent OPC UA interface (`internal/opcuasrv`)
 
@@ -196,7 +218,7 @@ make race   # all tests with the race detector
 ```
 
 - **Codec and read planning:** table tests for every type, word order,
-  scaling, range limits and block merging.
+  byte order, scaling, range limits and block merging.
 - **Poller:** runs against the simulator over real TCP. Covers reads, a bad
   register isolated to its own tag, setpoint writes, the simulator being
   stopped and restarted, and writes while disconnected.

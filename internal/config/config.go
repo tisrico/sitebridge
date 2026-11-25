@@ -73,6 +73,8 @@ type Device struct {
 	Timeout      time.Duration `yaml:"timeout"`
 	// WordOrder for 32-bit values: "high_first" (default) or "low_first".
 	WordOrder string `yaml:"word_order"`
+	// ByteOrder within each register: "little" (default) or "big".
+	ByteOrder string `yaml:"byte_order"`
 	// MaxGap is the largest run of unused registers that may be read
 	// in order to merge two tags into one request.
 	MaxGap uint16 `yaml:"max_gap"`
@@ -101,6 +103,12 @@ const (
 const (
 	HighWordFirst = "high_first"
 	LowWordFirst  = "low_first"
+)
+
+// Byte orders
+const (
+	LittleEndian = "little"
+	BigEndian    = "big"
 )
 
 // Width returns the number of 16-bit registers a tag type occupies.
@@ -203,6 +211,9 @@ func (c *Config) applyDefaults() {
 		if d.WordOrder == "" {
 			d.WordOrder = HighWordFirst
 		}
+		if d.ByteOrder == "" {
+			d.ByteOrder = LittleEndian
+		}
 		for j := range d.Tags {
 			tg := &d.Tags[j]
 			if tg.Scale == 0 {
@@ -265,6 +276,9 @@ func (c *Config) Validate() error {
 		}
 		if d.WordOrder != HighWordFirst && d.WordOrder != LowWordFirst {
 			add("device %s: word_order must be %s or %s", d.Name, HighWordFirst, LowWordFirst)
+		}
+		if d.ByteOrder != LittleEndian && d.ByteOrder != BigEndian {
+			add("device %s: byte_order must be %s or %s", d.Name, LittleEndian, BigEndian)
 		}
 		if len(d.Tags) == 0 {
 			add("device %s: at least one tag is required", d.Name)

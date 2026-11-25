@@ -35,6 +35,7 @@ devices:
   - name: bess1
     address: tcp://127.0.0.1:5020
     unit_id: 1
+    byte_order: big
     poll_interval: 500ms
     timeout: 1s
     max_gap: 4
@@ -50,6 +51,7 @@ devices:
   - name: meter1
     address: tcp://127.0.0.1:5021
     unit_id: 1
+    byte_order: big
     poll_interval: 1s
     timeout: 1s
     tags:
